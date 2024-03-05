@@ -31,6 +31,8 @@ def basic_energ_arb():
     model.S = Var(T, within=NonNegativeReals, bounds=(0, S_bar))
     # model.q_RU = Var(T, within=NonNegativeReals, bounds=(0, q_bar_R))
     # model.q_RD = Var(T, within=NonNegativeReals, bounds=(0, q_bar_R))
+    # model.q_Da = Var(T, within=NonNegativeReals, bounds=(0, q_bar_R))
+    # model.q_Ra = Var(T, within=NonNegativeReals, bounds=(0, q_bar_R))
     # model.alpha_ru = Var(within=NonNegativeReals, bounds=(0, 1))
     # model.alpha_rd = Var(within=NonNegativeReals, bounds=(0, 1))
     
@@ -40,9 +42,9 @@ def basic_energ_arb():
     #model.gamma_rd = model.alpha_rd.value * mu_rd
     
     # Define the objective function
-    model.obj = Objective(expr=sum((df['price'][t-1] - C_d) * model.q_D[t] - (df['price'][t-1] + C_r) * model.q_R[t] for t in T) * exp(-r * t), sense=maximize)
-    # objective w regulation
-    # Objective(expr=sum((df['price'][t-1] - C_d) * model.q_D[t] - (df['price'][t-1] + C_r) * model.q_R[t] for t in T) * exp(-r * t), sense=maximize)
+    model.obj = Objective(expr= sum( ((df['price'][t-1] - C_d) * model.q_D[t] - (df['price'][t-1] + C_r) * model.q_R[t])*exp(-r * t) for t in T), sense=maximize)
+    # objective w regulation and day ahead 
+    # Objective(expr=sum( ( (df['price'][t-1] - C_d) * model.q_D[t] + (df['price_regulationUp'][t-1] + model.gamma_ru * (df['price'][t-1] - C_d)) * model.q_RU[t] + (df['price_DayAhead'][t-1] - C_d) * model.q_Da[t] + (df['price_regulationDw'][t-1] - model.gamma_rd * (df['price'][t-1] + C_r)) * model.q_RD[t] - (df['price'][t-1] + C_r) * model.q_R[t] - (df['price_DayAhead'][t-1] + C_r) * model.q_Ra[t]) * exp(-r * t) for t in T), sense=maximize)
 
     
 
@@ -54,8 +56,11 @@ def basic_energ_arb():
             #  model.constraints.add(model.S[t] == gamma_c * model.q_R[t] - model.q_D[t] + gamma_c * gamma_rd * model.q_RD[t] - gamma_ru * model.q_RU[t])
         else:
             model.constraints.add(model.S[t] == gamma_s * model.S[t-1] + gamma_c * model.q_R[t] - model.q_D[t])
-            #model.constraints.add(model.S[t] == gamma_s * model.S[t-1] + gamma_c * model.q_R[t] - model.q_D[t] + gamma_c * gamma_rd * model.q_RD[t] - model.gamma_ru * model.q_RU[t])
+            #model.constraints.add(model.S[t] == gamma_s * model.S[t-1] + gamma_c *(model.q_Ra[t] + model.q_R[t]) - model.q_D[t] - model.q_Da[t] + gamma_c * model.gamma_rd * model.q_RD[t] - model.gamma_ru * model.q_RU[t])
         model.constraints.add(model.S[t] <= S_bar)
+        
+        #question do we separate all qs or add them up and limit by one constraint  
+        
         model.constraints.add(model.q_R[t] <= q_bar_R)
         #model.constraints.add(model.q_R[t] + model.q_RD[t] <= q_bar_R)
         model.constraints.add(model.q_D[t] <= q_bar_D)
